@@ -1,6 +1,9 @@
 package com.raithanna.dairy.RaithannaDairy.controller;
+import com.raithanna.dairy.RaithannaDairy.Utility.DownloadCsvReport;
+import com.raithanna.dairy.RaithannaDairy.models.bank;
 import com.raithanna.dairy.RaithannaDairy.models.purchaseOrder;
 import com.raithanna.dairy.RaithannaDairy.models.supplier;
+import com.raithanna.dairy.RaithannaDairy.repositories.BankRepository;
 import com.raithanna.dairy.RaithannaDairy.repositories.CustomerRepository;
 import com.raithanna.dairy.RaithannaDairy.repositories.PurchaseOrderRepository;
 import com.raithanna.dairy.RaithannaDairy.repositories.SupplierRepository;
@@ -8,6 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.time.LocalDate;
 import java.util.*;
@@ -20,16 +26,20 @@ public class purchaseOrderController {
     private CustomerRepository customerRepository;
     @Autowired
     private SupplierRepository supplierRepository;
+    @Autowired
+     private BankRepository bankRepository;
     @GetMapping("/purchase")
     public String purchaseOrderForm(Model model,HttpSession session) {
         if (session.getAttribute("loggedIn").equals("yes")) {
         List<supplier> Suppliers = supplierRepository.findByOrderByIdDesc();
        List<purchaseOrder>Amts= purchaseOrderRepository.findByOrderByAmtDesc();
+            List<bank> bank = bankRepository.findByOrderByIdDesc();
         System.out.println(Suppliers.size());
         purchaseOrder po = new purchaseOrder();
         model.addAttribute("purchase", po);
         model.addAttribute("supplier", Suppliers);
         model.addAttribute("amt",Amts);
+        model.addAttribute("bank", bank);
         return "purchase";
     }
         List messages = new ArrayList<>();
@@ -43,9 +53,12 @@ public class purchaseOrderController {
     public String purchaseExcelOrderForm(Model model, HttpSession session) {
         if (session.getAttribute("loggedIn").equals("yes")) {
             List<supplier> Suppliers = supplierRepository.findByOrderByIdDesc();
+
             purchaseOrder po = new purchaseOrder();
             model.addAttribute("purchase", po);
             model.addAttribute("supplier", Suppliers);
+
+
             return "purchaseExcel";
         }
         List messages = new ArrayList<>();
@@ -135,24 +148,28 @@ public class purchaseOrderController {
         }
         purchaseOrderRepository.save(po);
         Map<String, String> respBody = new HashMap<>();
+        respBody.putIfAbsent("commonValue", String.valueOf(purchaseOrder.getSupplier()));
+        System.out.println("Supplier:"+String.valueOf(purchaseOrder.getSupplier()));
         return "redirect:/purchase";
     }
 
-
     @PostMapping("/purchaseExcelData")
-    public String purchaseExcelData(@RequestParam Map<String, String> body, Model model) {
+    public String purchaseExcelData(@RequestParam Map<String, String> body, Model model, HttpServletResponse response, HttpServletRequest request) {
         System.out.println(body);
-        body.get("supplierName");
-        LocalDate.parse(body.get("invDate"));
-        Double.parseDouble(body.get("snfP"));
-        Double.parseDouble(body.get("fatP"));
-        Double.parseDouble(body.get("tsRate"));
-        Double.parseDouble(body.get("quantity"));
-        body.get("milkType");
-        body.get("supplierName");
-        body.get("bankName");
-        body.get("paymentStatus");
+        purchaseOrder po = new purchaseOrder();
+        System.out.println("SupplierCode:" + body.get("code"));
+        po.setSupplier(body.get("supplierName"));
+        po.setInvDate(LocalDate.parse(body.get("invDate")));
+        po.setRecDate(LocalDate.parse(body.get("recDate")));
 
+        // excel data list
+        List<purchaseOrder> list = purchaseOrderRepository.findBySupplierAndInvDateBetween(po.getSupplier(), po.getInvDate(), po.getRecDate());
+
+        String header[] = {"invDate", "quantity", "fatP", "snfP"};
+
+        DownloadCsvReport.getCsvReportDownload(response, header, list, "invoice_data.csv");
+
+        System.out.println("Excel Size -- "+list.size());
         return "redirect:/purchaseExcelData";
     }
 }

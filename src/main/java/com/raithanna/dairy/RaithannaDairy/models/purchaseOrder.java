@@ -3,14 +3,19 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.jetbrains.annotations.NotNull;
+
 import javax.persistence.*;
+import java.text.ParseException;
 import java.time.LocalDate;
+import java.util.Map;
+
 @Entity
 @Table
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class purchaseOrder {
+public class purchaseOrder extends DownloadSuperBean{
     @Id
     @GeneratedValue
     private Integer id;
@@ -32,5 +37,8 @@ public class purchaseOrder {
     private String paymentStatus;
    // private String VehicleNo;
     //private String format;
+   public void mapToVariables(@NotNull Map purchase) throws ParseException {
+       this.supplier = purchase.get("supplier").toString();
+   }
 
 }
